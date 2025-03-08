@@ -1,0 +1,13 @@
+numpy
+pandas
+torch
+torchaudio
+openai-whisper
+googletrans==4.0.0-rc1
+transformers
+sentence-transformers
+spacy
+opencv-python
+pillow
+monai
+streamlit

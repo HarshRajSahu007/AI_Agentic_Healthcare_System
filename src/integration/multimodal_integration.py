@@ -20,5 +20,5 @@ def process_inputs(audio_path, image_path):
 
 # Example usage
 if __name__ == "__main__":
-    result = process_inputs("path_to_audio.mp3", "path_to_image.jpg")
+    result = process_inputs("/Users/harshrajsahu/Desktop/AI_Hack/AI-Healthcare-System/data/voice.mp3", "/Users/harshrajsahu/Desktop/AI_Hack/AI-Healthcare-System/data/cut_pic.jpg")
     print(result)

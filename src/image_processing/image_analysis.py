@@ -23,5 +23,4 @@ def analyze_image(image_path):
 
 
 if __name__ == "__main__":
-    result = analyze_image("path_to_image.jpg")
-    print(result)
+    result = analyze_image("image.jpg")

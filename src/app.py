@@ -1,5 +1,4 @@
 import streamlit as st
-from integration.multimodal_integration import process_inputs
 
 st.title("MediVoice+Vision: AI-Powered Symptom Checker")
 
@@ -9,6 +8,8 @@ image_file = st.file_uploader("Upload Image File", type=["jpg", "png"])
 
 if st.button("Analyze"):
     if audio_file and image_file:
+        # Import the multimodal integration module
+        from integration.multimodal_integration import process_inputs
         result = process_inputs(audio_file, image_file)
         st.write("### Symptom Analysis")
         st.json(result["symptoms"])

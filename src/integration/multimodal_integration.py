@@ -2,15 +2,15 @@ from voice_processing.voice_to_text import transcribe_audio
 from text_processing.symptom_analysis import analyze_symptoms
 from image_processing.image_analysis import analyze_image
 
-def process_inputs(audio_path, image_path):
+def process_inputs(audio_file, image_file):
     # Step 1: Transcribe audio
-    symptoms = transcribe_audio(audio_path)
+    symptoms = transcribe_audio(audio_file)
 
     # Step 2: Analyze symptoms
     symptom_analysis = analyze_symptoms(symptoms)
 
     # Step 3: Analyze image
-    image_analysis = analyze_image(image_path)
+    image_analysis = analyze_image(image_file)
 
     # Step 4: Combine results
     return {
@@ -20,5 +20,6 @@ def process_inputs(audio_path, image_path):
 
 # Example usage
 if __name__ == "__main__":
-    result = process_inputs("/Users/harshrajsahu/Desktop/AI_Hack/AI-Healthcare-System/data/voice.mp3", "/Users/harshrajsahu/Desktop/AI_Hack/AI-Healthcare-System/data/cut_pic.jpg")
-    print(result)
+    with open("path_to_audio.mp3", "rb") as audio_file, open("path_to_image.jpg", "rb") as image_file:
+        result = process_inputs(audio_file, image_file)
+        print(result)

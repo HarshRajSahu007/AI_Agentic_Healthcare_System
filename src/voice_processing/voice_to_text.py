@@ -1,21 +1,28 @@
 import whisper
-import numpy as np
-import torchaudio
+import librosa
+import tempfile
+import os
 
-def transcribe_audio(audio_path):
-    print(f"Processing: {audio_path}")
+def transcribe_audio(audio_file):
+    # Save the uploaded file to a temporary location
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp_file:
+        tmp_file.write(audio_file.read())
+        tmp_file_path = tmp_file.name
 
-    # Load and check audio format
-    waveform, sample_rate = torchaudio.load(audio_path)
-    
-    # Ensure the waveform is a NumPy array
-    audio_array = waveform.numpy()
-    audio_array = np.array(audio_array, dtype=np.float32)  # Ensure correct dtype
+    # Load the audio file using librosa
+    waveform, sample_rate = librosa.load(tmp_file_path, sr=None)
 
+    # Transcribe the audio using Whisper
     model = whisper.load_model("base")
-    result = model.transcribe(audio_path)
+    result = model.transcribe(tmp_file_path)
+
+    # Clean up the temporary file
+    os.remove(tmp_file_path)
+
     return result["text"]
 
+# Example usage
 if __name__ == "__main__":
-    text = transcribe_audio("audio.mp3")
-    print(text)
+    with open("path_to_audio.mp3", "rb") as f:
+        text = transcribe_audio(f)
+        print(text)

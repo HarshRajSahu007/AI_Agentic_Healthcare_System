@@ -1,7 +1,5 @@
 Creating a multimodal AI agent for a healthcare system in 10 days is ambitious but achievable with focused effort. Here's a step-by-step guide to help you learn, design, and implement your project for the hackathon:
 
-Step 1: Understand the Basics (Day 1-2)
-
 What is a Multimodal AI Agent?
 Multimodal AI agents process and analyze multiple types of data (e.g., text, images, audio, video) to make decisions or provide insights.
 In healthcare, this could mean combining patient records (text), medical images (X-rays, MRIs), and voice data (doctor-patient conversations) to assist in diagnosis or treatment.

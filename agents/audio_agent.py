@@ -165,3 +165,174 @@ class AudioAgent:
             logger.warning(f"Voice analyzer model not found at {model_path}. Using untrained model.")
             
         return model
+
+
+    def preprocess_audio(self, audio_path:str)->np.ndarray:
+        """
+        Preprocess audio file for analysis
+        
+        Args:
+            audio_path: Path to the audio file
+            
+        Returns:
+            Preprocessed audio as numpy array
+        """
+
+        try :
+            if not audio_path.endswith('.wav'):
+                audio = AudioSegment.from_file(audio_path)
+                temp_path= audio_path.rsplit('.',1)[0]+'.wav'
+                audio.export(temp_path,format='wav')
+                audio_path=temp_path
+
+            audio, sr = librosa.load(audio_path, sr=self.sample_rate)
+
+            if self.config.get("normalize",True):
+                audio = librosa.util.normalize(audio)
+            
+            if self.config.get("remove_silence",False):
+                non_silent_intervals=librosa.effects.split(
+                    audio,
+                    top_db=self.config.get("silence_thresold",30)
+                )
+                audio=np.concatenate([audio[start:end] for start,end in non_silent_intervals])
+
+            return audio
+        except Exception as e:
+            logger.error(f"Error preprocessing audio file {audio_path}:{str(e)}")
+            raise
+
+
+    def extract_features(self,audio:np.ndarray)->Dict[str, Any]:
+        """
+        Extract features from preprocessed audio
+        
+        Args:
+            audio: Preprocessed audio array
+            
+        Returns:
+            Dictionary of extracted features
+        """
+
+        features={}
+
+        if self.config.get("extract_mfcc",True):
+            mfccs=librosa.feature.mfcc(
+                y=audio,
+                sr=self.sample_rate,
+                n_mfcc=self.config.get("n_mfcc",13)
+            )
+            features["mfcc"]=mfccs.mean(axis=1)
+
+        if self.config.get("external_spectral_centroid",True):
+            spectral_centroid=librosa.feature.spectral_centroid(
+                y=audio,
+                sr=self.sample_rate
+            )
+            features["spectral_centroid"]=spectral_centroid.mean()
+
+        if self.config.get("extract_chroma",True):
+            bandwidth=librosa.feature.chroma_stft(y=audio,sr=self.sample_rate)
+            features["bandwidth"]=bandwidth.mean()
+
+        if self.config.get("extract_tempo",True):
+            onset_env=librosa.onset.onset_strength(y=audio, sr=self.sample_rate)
+            tempo=librosa.beat.tempo(onset_envelope=onset_env, sr=self.sample_rate)
+            features["tempo"]=tempo[0]
+
+        return features
+
+    def transcribe_audio(self, audio: np.ndarray) -> str:
+        """
+        Transcribe speech in audio using Whisper
+        
+        Args:
+            audio: Audio array
+            
+        Returns:
+            Transcribed text
+        """
+        try:
+            # Convert to float32 if needed
+            if audio.dtype != np.float32:
+                audio = audio.astype(np.float32)
+                
+            # Use Whisper to transcribe
+            result = self.whisper_model.transcribe(audio)
+            return result["text"]
+        except Exception as e:
+            logger.error(f"Error transcribing audio: {str(e)}")
+            return ""
+    
+    def analyze(self, audio_path: str) -> Dict[str, Any]:
+        """
+        Analyze audio file and return comprehensive results
+        
+        Args:
+            audio_path: Path to audio file
+            
+        Returns:
+            Dictionary with analysis results
+        """
+        results = {}
+        
+        try:
+
+            audio = self.preprocess_audio(audio_path)
+            
+
+            features = self.extract_features(audio)
+            results["features"] = features
+            
+
+            if self.config.get("transcribe", True):
+                transcript = self.transcribe_audio(audio)
+                results["transcript"] = transcript
+            
+
+            for model_name, model in self.models.items():
+                if model_name == "emotion_detector":
+
+                    emotion_result = model(audio_path)
+                    results[model_name] = emotion_result
+                else:
+
+                    with torch.no_grad():
+                        model_input = torch.tensor(audio).float().unsqueeze(0).unsqueeze(0)
+                        if len(model_input) > 10000: 
+                            model_input = model_input[:, :, :10000]
+                        
+
+                        output = model(model_input.to(self.device))
+                        if model_name == "cough_classifier":
+                            classes = ["normal", "covid", "pneumonia", "bronchitis"]
+                            probs = torch.nn.functional.softmax(output, dim=1)[0]
+                            class_idx = torch.argmax(probs).item()
+                            results[model_name] = {
+                                "prediction": classes[class_idx],
+                                "confidence": probs[class_idx].item(),
+                                "probabilities": {cls: prob.item() for cls, prob in zip(classes, probs)}
+                            }
+                        elif model_name == "breathing_analyzer":
+                            classes = ["normal", "wheezy", "crackle", "stridor", "rhonchi"]
+                            probs = torch.nn.functional.softmax(output, dim=1)[0]
+                            class_idx = torch.argmax(probs).item()
+                            results[model_name] = {
+                                "prediction": classes[class_idx],
+                                "confidence": probs[class_idx].item(),
+                                "probabilities": {cls: prob.item() for cls, prob in zip(classes, probs)}
+                            }
+                        elif model_name == "voice_analyzer":
+                            output = output[0].cpu().numpy()
+                            results[model_name] = {
+                                "tremor": float(output[0]),
+                                "hoarseness": float(output[1]),
+                                "clarity": float(output[2])
+                            }
+            
+            return results
+            
+        except Exception as e:
+            logger.error(f"Error analyzing audio: {str(e)}")
+            results["error"] = str(e)
+            return results
